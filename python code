@@ -1,0 +1,35 @@
+import pandas as pd
+import numpy as np
+import re
+df = pd.read_csv('/content/netflix_titles (2).csv', encoding='ISO-8859-1')
+
+df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+df = df.drop(columns=['Column1'], errors='ignore')
+
+# Clean and convert date format
+df['date_added'] = pd.to_datetime(df['date_added'], errors='coerce', dayfirst=False)
+
+df['date_added'] = df['date_added'].dt.strftime('%d-%m-%Y')
+
+def clean_special_chars(text):
+    if pd.isna(text):
+        return text
+    return re.sub(r'[^A-Za-z0-9\s,.-]', '', text)
+
+text_cols = df.select_dtypes(include='object').columns
+for col in text_cols:
+    df[col] = df[col].apply(clean_special_chars)
+
+df = df.drop_duplicates()
+
+# Example: fill null in 'country' and 'rating' with mode
+df['country'].fillna(df['country'].mode()[0], inplace=True)
+df['rating'].fillna(df['rating'].mode()[0], inplace=True)
+
+# Fill missing dates with a fixed value or forward fill
+df['date_added'].fillna(method='ffill', inplace=True)
+
+df.to_csv('netflix_titles_cleaned.csv', index=False)
+
+
+print(df.head(10))
